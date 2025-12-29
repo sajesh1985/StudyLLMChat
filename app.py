@@ -24,7 +24,7 @@ if st.button("Send"):
         result = bedrock.invoke_model(
             modelId="anthropic.claude-3-sonnet-20240229-v1:0",
             body=json.dumps({
-                "messages": [{"role": "user", "content": message}],
+                "messages": [{"role": "user", "content": [{ "type": "text", "text": message }]}],
                 "max_tokens": 400
             })
         )
