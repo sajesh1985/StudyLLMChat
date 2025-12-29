@@ -8,8 +8,11 @@ MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 # ----------------------------
 
 st.set_page_config(page_title="Bedrock Chat", layout="centered")
-st.title("💬 AWS Bedrock Chat")
 
+dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+table = dynamodb.Table("chat-response-d")
+
+st.title("Chat + Save to DynamoDB")
 # Bedrock client
 bedrock = boto3.client(
     service_name="bedrock-runtime",
@@ -26,7 +29,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # User input
-prompt = st.chat_input("Ask something...")
+prompt = st.chat_input("Ask a question...")
 
 if prompt:
     # Store user message
@@ -60,6 +63,12 @@ if prompt:
         full_response = result["content"][0]["text"]
 
         response_container.markdown(full_response)
+        # Insert into DynamoDB
+        item = {
+            "id": "678", "interactionId": "3456885484dfsw3", "input": prompt, "metric": 9, "response": full_response
+        }
+
+        table.put_item(Item=item)
 
     # Store assistant response
     st.session_state.messages.append(

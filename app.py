@@ -1,64 +1,43 @@
 import json
 import boto3
-import time
-from datetime import datetime
+import uuid
 import streamlit as st
+from datetime import datetime
 
-bedrock = boto3.client("bedrock-runtime")
+# AWS clients
+bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+table = dynamodb.Table("chat-response-d")
+st.write("DEBUG VERSION: 2025-01-08-01")
+
 MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 
+st.title("Chat + Save to DynamoDB")
+prompt = st.chat_input("Ask a question")
+message = st.text_area("Enter your message")
 
-def lambda_handler(event, context):
-    body = json.loads(event.get("body", "{}"))
-    message = body.get("message", "")
-
+if st.button("Send"):
     if not message:
-        return response(400, "Message is required")
+        st.error("Message is required")
+    else:
+        # Invoke Bedrock
+        result = bedrock.invoke_model(
+            modelId=MODEL_ID,
+            body=json.dumps({
+                "messages": [{"role": "user", "content": message}],
+                "max_tokens": 400
+            })
+        )
 
-    result = bedrock.invoke_model(
-        modelId=MODEL_ID,
-        body=json.dumps({
-            "messages": [{"role": "user", "content": message}],
-            "max_tokens": 400
-        })
-    )
+        data = json.loads(result["body"].read())
+        reply = data["content"][0]["text"]
 
-    data = json.loads(result["body"].read())
-    reply = data["content"][0]["text"]
+        # Insert into DynamoDB
+        item = {
+            "id": "678", "interactionId": "3456885484dfsw3", "input": message, "metric": 9, "response": reply
+        }
 
-    # Create DynamoDB client
-    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-    table = dynamodb.Table("chat-response-d")
+        table.put_item(Item=item)
 
-    st.title("Save Message to DynamoDB")
-
-    user_id = st.text_input("User ID")
-    message_input = st.text_area("Message")
-
-    if st.button("Save"):
-        if not user_id or not message_input:
-            st.error("Please enter both user_id and message")
-        else:
-            item = {
-                "id": "678",
-                "interactionId": "3456885484dfsw3",
-                "input": message_input,
-                "metric": 9,
-                "response": reply
-            }
-
-            table.put_item(Item=item)
-            st.success("Message saved successfully!")
-
-    return response(200, reply)
-
-
-def response(code, msg):
-    return {
-        "statusCode": code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-        },
-        "body": json.dumps({"reply": msg})
-    }
+        st.success("Saved to DynamoDB")
+        st.write("Response:", reply)
