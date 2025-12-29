@@ -13,7 +13,7 @@ st.write("DEBUG VERSION: 2025-01-08-01")
 MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 
 st.title("Chat + Save to DynamoDB")
-prompt = st.chat_input("Ask a question")
+#prompt = st.chat_input("Ask a question")
 message = st.text_area("Enter your message")
 
 if st.button("Send"):
@@ -22,7 +22,7 @@ if st.button("Send"):
     else:
         # Invoke Bedrock
         result = bedrock.invoke_model(
-            modelId=MODEL_ID,
+            modelId="anthropic.claude-3-sonnet-20240229-v1:0",
             body=json.dumps({
                 "messages": [{"role": "user", "content": message}],
                 "max_tokens": 400
